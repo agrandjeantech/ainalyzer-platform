@@ -241,6 +241,8 @@ export default function AnalyzePage() {
                 isAnalyzing={isAnalyzing}
                 onAnalysisTypesChange={setSelectedAnalysisTypes}
                 onStartAnalysis={handleStartAnalyses}
+                selectedProvider={selectedProvider}
+                onProviderChange={setSelectedProvider}
               />
             </div>
           </div>

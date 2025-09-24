@@ -306,6 +306,8 @@ interface AnalysisChatProps {
   onAnalysisTypesChange?: (types: string[]) => void
   onStartAnalysis?: () => void
   hasApiKeys?: boolean
+  selectedProvider?: 'openai' | 'anthropic'
+  onProviderChange?: (provider: 'openai' | 'anthropic') => void
 }
 
 export function AnalysisChat({ 
@@ -317,7 +319,9 @@ export function AnalysisChat({
   analysisTypes = [],
   onAnalysisTypesChange,
   onStartAnalysis,
-  hasApiKeys = false
+  hasApiKeys = false,
+  selectedProvider: propSelectedProvider = 'openai',
+  onProviderChange
 }: AnalysisChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -329,10 +333,12 @@ export function AnalysisChat({
   ])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedProvider, setSelectedProvider] = useState<'openai' | 'anthropic'>('openai')
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { apiKeys } = useApiKeys()
+
+  // Utiliser le provider passé en props ou fallback sur le state local
+  const selectedProvider = propSelectedProvider
 
   // Auto-scroll vers le bas
   const scrollToBottom = () => {
@@ -425,10 +431,10 @@ export function AnalysisChat({
 
   // S'assurer que le provider sélectionné est disponible
   useEffect(() => {
-    if (hasApiKeysLocal && !availableProviders.includes(selectedProvider)) {
-      setSelectedProvider(availableProviders[0])
+    if (hasApiKeysLocal && !availableProviders.includes(selectedProvider) && onProviderChange) {
+      onProviderChange(availableProviders[0])
     }
-  }, [availableProviders, selectedProvider, hasApiKeysLocal])
+  }, [availableProviders, selectedProvider, hasApiKeysLocal, onProviderChange])
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading || !hasApiKeysLocal) return
@@ -554,7 +560,7 @@ export function AnalysisChat({
             {availableProviders.length > 1 && (
               <select
                 value={selectedProvider}
-                onChange={(e) => setSelectedProvider(e.target.value as 'openai' | 'anthropic')}
+                onChange={(e) => onProviderChange && onProviderChange(e.target.value as 'openai' | 'anthropic')}
                 className="text-xs border rounded px-2 py-1"
                 disabled={isLoading}
               >
