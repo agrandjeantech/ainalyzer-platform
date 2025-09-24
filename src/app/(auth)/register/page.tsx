@@ -144,10 +144,12 @@ export default function RegisterPage() {
                 <Label htmlFor="displayName">Nom d'affichage</Label>
                 <Input
                   id="displayName"
+                  name="displayName"
                   type="text"
                   placeholder="Votre nom"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
+                  autoComplete="name"
                   required
                   disabled={isLoading}
                 />
@@ -157,10 +159,12 @@ export default function RegisterPage() {
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="votre@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                   required
                   disabled={isLoading}
                 />
@@ -170,10 +174,12 @@ export default function RegisterPage() {
                 <Label htmlFor="password">Mot de passe</Label>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
                   required
                   disabled={isLoading}
                   minLength={6}
@@ -187,10 +193,12 @@ export default function RegisterPage() {
                 <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
                 <Input
                   id="confirmPassword"
+                  name="confirmPassword"
                   type="password"
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  autoComplete="new-password"
                   required
                   disabled={isLoading}
                 />
