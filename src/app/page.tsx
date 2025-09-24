@@ -1,102 +1,125 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { AnalysisButton } from "@/components/ui/AnalysisButton";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ImageIcon, BrainIcon, ShieldCheckIcon, UsersIcon } from "lucide-react";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Header */}
+      <header className="border-b bg-white/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <ImageIcon className="h-8 w-8 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">Ainalyzer</h1>
+              <Badge variant="secondary">v1.0.0</Badge>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link href="/login">
+                <Button variant="outline">Connexion</Button>
+              </Link>
+              <Link href="/register">
+                <Button>Inscription</Button>
+              </Link>
+            </div>
+          </div>
         </div>
+      </header>
+
+      {/* Hero Section */}
+      <main className="container mx-auto px-4 py-16">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            Plateforme d'Analyse d'Images
+          </h2>
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            Analysez vos images avec l'intelligence artificielle pour améliorer l'accessibilité 
+            et extraire des informations précieuses.
+          </p>
+          <div className="flex justify-center space-x-4">
+            <AnalysisButton size="lg" className="px-8">
+              Commencer l'analyse
+            </AnalysisButton>
+            <Link href="/login">
+              <Button variant="outline" size="lg" className="px-8">
+                Se connecter
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Features Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <BrainIcon className="h-12 w-12 text-blue-600 mb-4" />
+              <CardTitle>Analyse IA Avancée</CardTitle>
+              <CardDescription>
+                Utilisez OpenAI et Anthropic pour des analyses d'images précises et détaillées.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="text-sm text-gray-600 space-y-2">
+                <li>• Description automatique</li>
+                <li>• Détection d'objets</li>
+                <li>• Analyse d'accessibilité</li>
+                <li>• Extraction de texte</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <ShieldCheckIcon className="h-12 w-12 text-green-600 mb-4" />
+              <CardTitle>Sécurité & Confidentialité</CardTitle>
+              <CardDescription>
+                Vos données et clés API sont chiffrées et sécurisées avec Supabase.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="text-sm text-gray-600 space-y-2">
+                <li>• Chiffrement des clés API</li>
+                <li>• Authentification sécurisée</li>
+                <li>• Sessions gérées</li>
+                <li>• Isolation des données</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <UsersIcon className="h-12 w-12 text-purple-600 mb-4" />
+              <CardTitle>Gestion Multi-utilisateurs</CardTitle>
+              <CardDescription>
+                Interface d'administration complète avec gestion des rôles et permissions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="text-sm text-gray-600 space-y-2">
+                <li>• Dashboard utilisateur</li>
+                <li>• Interface admin</li>
+                <li>• Statistiques d'usage</li>
+                <li>• Historique des analyses</li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+
+      {/* Footer */}
+      <footer className="border-t bg-white/80 backdrop-blur-sm mt-16">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center text-gray-600">
+            <p>© 2024 Ainalyzer - Plateforme d'analyse d'images avec IA</p>
+            <p className="text-sm mt-2">
+              Développé avec Next.js 14, TypeScript, TailwindCSS et Shadcn/UI
+            </p>
+          </div>
+        </div>
       </footer>
     </div>
   );
