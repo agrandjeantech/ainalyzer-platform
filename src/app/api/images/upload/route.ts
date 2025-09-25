@@ -245,24 +245,28 @@ export async function POST(request: NextRequest) {
     // Sauvegarder les informations en base
     let imageRecord
     try {
+      const insertData = {
+        user_id: user.id,
+        original_name: metadata.originalName,
+        storage_bucket: 'analysis-images',
+        storage_path: filePath,
+        public_url: urlData.data.publicUrl,
+        size_bytes: metadata.size,
+        format: metadata.type,
+        file_hash: metadata.hash,
+        metadata: {
+          width: metadata.width,
+          height: metadata.height,
+          originalName: metadata.originalName
+        },
+        status: 'uploaded'
+      }
+      
+      console.log('✓ Données à insérer:', JSON.stringify(insertData, null, 2))
+      
       const insertResult = await supabase
         .from('images')
-        .insert({
-          user_id: user.id,
-          original_name: metadata.originalName,
-          storage_bucket: 'analysis-images',
-          storage_path: filePath,
-          public_url: urlData.data.publicUrl,
-          size_bytes: metadata.size,
-          format: metadata.type,
-          file_hash: metadata.hash,
-          metadata: {
-            width: metadata.width,
-            height: metadata.height,
-            originalName: metadata.originalName
-          },
-          status: 'uploaded'
-        })
+        .insert(insertData)
         .select()
         .single()
 
