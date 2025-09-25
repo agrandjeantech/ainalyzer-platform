@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
           height: metadata.height,
           originalName: metadata.originalName
         },
-        status: 'completed'
+        status: 'ready'
       }
       
       console.log('✓ Données à insérer:', JSON.stringify(insertData, null, 2))
