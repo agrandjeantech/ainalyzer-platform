@@ -15,6 +15,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Ainalyzer",
   description: "Analysez vos images avec l'IA pour l'accessibilité web",
+  icons: {
+    icon: [
+      {
+        url: '/icon.ico',
+        sizes: '32x32',
+        type: 'image/x-icon',
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
