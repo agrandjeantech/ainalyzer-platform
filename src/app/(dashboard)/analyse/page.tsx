@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,7 +21,7 @@ if (typeof document !== 'undefined') {
   document.title = "Ainalyzer - Analyse d'images"
 }
 
-export default function AnalyzePage() {
+function AnalyzePageContent() {
   const [user, setUser] = useState<any>(null)
   const [uploadedImageId, setUploadedImageId] = useState<string | null>(null)
   const [uploadedImageFile, setUploadedImageFile] = useState<File | null>(null)
@@ -526,5 +526,20 @@ export default function AnalyzePage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function AnalyzePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <BrainIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p>Chargement...</p>
+        </div>
+      </div>
+    }>
+      <AnalyzePageContent />
+    </Suspense>
   )
 }
