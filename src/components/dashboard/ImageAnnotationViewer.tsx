@@ -247,9 +247,16 @@ export function ImageAnnotationViewer({
 
   useEffect(() => {
     if (imageFile) {
-      const url = URL.createObjectURL(imageFile)
-      setImageUrl(url)
-      return () => URL.revokeObjectURL(url)
+      // Vérifier si le fichier a une URL publique (pour les analyses existantes)
+      const publicUrl = (imageFile as any).publicUrl
+      if (publicUrl) {
+        setImageUrl(publicUrl)
+      } else {
+        // Fichier normal uploadé
+        const url = URL.createObjectURL(imageFile)
+        setImageUrl(url)
+        return () => URL.revokeObjectURL(url)
+      }
     }
   }, [imageFile])
 

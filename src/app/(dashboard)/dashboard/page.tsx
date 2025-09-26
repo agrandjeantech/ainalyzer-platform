@@ -4,7 +4,13 @@ import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ImageIcon, KeyIcon, BarChart3Icon, LogOutIcon, UserIcon, ShieldIcon, BrainIcon } from 'lucide-react'
+import { ImageIcon, KeyIcon, BarChart3Icon, LogOutIcon, UserIcon, ShieldIcon, BrainIcon, HistoryIcon } from 'lucide-react'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: "Ainalyzer - Accueil",
+  description: "Tableau de bord principal pour gérer vos analyses d'images avec l'IA",
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -31,14 +37,15 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
-  // Vérifier si l'utilisateur est admin
+  // Vérifier si l'utilisateur est admin ou superadmin
   const { data: userData } = await supabase
     .from('users')
     .select('role')
     .eq('id', user.id)
     .single()
 
-  const isAdmin = userData?.role === 'admin'
+  const isAdmin = userData?.role === 'admin' || userData?.role === 'superadmin'
+  const isSuperAdmin = userData?.role === 'superadmin'
 
   const handleSignOut = async () => {
     'use server'
@@ -56,7 +63,6 @@ export default async function DashboardPage() {
             <div className="flex items-center space-x-2">
               <ImageIcon className="h-8 w-8 text-blue-600" />
               <h1 className="text-2xl font-bold text-gray-900">Ainalyzer</h1>
-              <Badge variant="secondary">Dashboard</Badge>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
@@ -131,7 +137,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className={`grid gap-6 ${isAdmin ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+        <div className={`grid gap-6 ${isAdmin ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
           <Card>
             <CardHeader>
               <CardTitle>Analyser une image</CardTitle>
@@ -141,10 +147,28 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent className="flex flex-col h-full">
               <div className="flex-1"></div>
-              <Link href="/real-analyze">
+              <Link href="/analyse">
                 <Button className="w-full">
                   <BrainIcon className="h-4 w-4 mr-2" />
                   Analyser votre image
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Historique des analyses</CardTitle>
+              <CardDescription>
+                Consultez et gérez toutes vos analyses précédentes
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col h-full">
+              <div className="flex-1"></div>
+              <Link href="/historique">
+                <Button variant="outline" className="w-full">
+                  <HistoryIcon className="h-4 w-4 mr-2" />
+                  Voir l'historique
                 </Button>
               </Link>
             </CardContent>
@@ -186,21 +210,40 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Admin Card - Only visible for admins */}
+          {/* Admin Card - Only visible for admins and superadmins */}
           {isAdmin && (
-            <Card className="border-gray-800 bg-black">
+            <Card className={`${isSuperAdmin ? 'border-red-600 bg-gradient-to-br from-red-900 to-black' : 'border-gray-800 bg-black'}`}>
               <CardHeader>
-                <CardTitle className="text-white">Administration</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white">
+                    {isSuperAdmin ? 'Super Administration' : 'Administration'}
+                  </CardTitle>
+                  {isSuperAdmin && (
+                    <Badge variant="destructive" className="bg-red-600 text-white">
+                      SUPERADMIN
+                    </Badge>
+                  )}
+                </div>
                 <CardDescription className="text-gray-300">
-                  Gérez la plateforme et surveillez les utilisateurs
+                  {isSuperAdmin 
+                    ? 'Contrôle total de la plateforme et gestion des administrateurs'
+                    : 'Gérez la plateforme et surveillez les utilisateurs'
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col h-full">
                 <div className="flex-1"></div>
                 <Link href="/admin">
-                  <Button variant="outline" className="w-full border-gray-300 text-white bg-transparent hover:bg-gray-800">
+                  <Button 
+                    variant="outline" 
+                    className={`w-full ${
+                      isSuperAdmin 
+                        ? 'border-red-400 text-white bg-transparent hover:bg-red-900/50' 
+                        : 'border-gray-300 text-white bg-transparent hover:bg-gray-800'
+                    }`}
+                  >
                     <ShieldIcon className="h-4 w-4 mr-2" />
-                    Panel Admin
+                    {isSuperAdmin ? 'Panel Super Admin' : 'Panel Admin'}
                   </Button>
                 </Link>
               </CardContent>

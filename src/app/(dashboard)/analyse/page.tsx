@@ -14,6 +14,12 @@ import { AnalysisChat } from '@/components/dashboard/AnalysisChat'
 import { ImageAnnotationViewer } from '@/components/dashboard/ImageAnnotationViewer'
 import { useAnalysisTypes } from '@/hooks/useAnalysisTypes'
 import { useApiKeys } from '@/hooks/useApiKeys'
+import { useSearchParams } from 'next/navigation'
+
+// Métadonnées pour cette page (côté client)
+if (typeof document !== 'undefined') {
+  document.title = "Ainalyzer - Analyse d'images"
+}
 
 export default function AnalyzePage() {
   const [user, setUser] = useState<any>(null)
@@ -28,10 +34,18 @@ export default function AnalyzePage() {
   const [analysisMessages, setAnalysisMessages] = useState<any[]>([])
   const [currentStep, setCurrentStep] = useState<'upload' | 'configure' | 'analyze' | 'results'>('upload')
   
+  // États pour charger une analyse existante
+  const [loadingExistingAnalysis, setLoadingExistingAnalysis] = useState(false)
+  const [existingAnalysis, setExistingAnalysis] = useState<any>(null)
+  
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const { analysisTypes } = useAnalysisTypes()
   const { apiKeys } = useApiKeys()
+  
+  // Récupérer l'ID d'analyse depuis l'URL
+  const analysisId = searchParams.get('analysis_id')
 
   useEffect(() => {
     const checkUser = async () => {
@@ -44,6 +58,112 @@ export default function AnalyzePage() {
     }
     checkUser()
   }, [router, supabase.auth])
+
+  // Charger une analyse existante si analysis_id est fourni
+  useEffect(() => {
+    const loadExistingAnalysis = async () => {
+      if (!analysisId || !user) return
+
+      setLoadingExistingAnalysis(true)
+      try {
+        // Récupérer l'analyse avec ses données associées
+        const { data: analysis, error } = await supabase
+          .from('analyses')
+          .select(`
+            *,
+            images!inner(
+              id,
+              original_name,
+              public_url,
+              size_bytes,
+              format
+            ),
+            analysis_types!inner(
+              id,
+              name,
+              category
+            )
+          `)
+          .eq('id', analysisId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (error) {
+          console.error('Erreur lors du chargement de l\'analyse:', error)
+          setUploadError('Analyse non trouvée ou accès refusé')
+          return
+        }
+
+        if (analysis) {
+          setExistingAnalysis(analysis)
+          
+          // Créer un fichier image virtuel pour l'affichage
+          if (analysis.images.public_url) {
+            // Créer un objet File virtuel avec l'URL comme source
+            const virtualFile = new File([], analysis.images.original_name, {
+              type: `image/${analysis.images.format}`
+            })
+            
+            // Ajouter l'URL comme propriété personnalisée
+            Object.defineProperty(virtualFile, 'publicUrl', {
+              value: analysis.images.public_url,
+              writable: false
+            })
+            
+            setUploadedImageFile(virtualFile)
+            setUploadedImageId(analysis.images.id)
+          }
+          
+          // Extraire les résultats d'analyse
+          if (analysis.result_json) {
+            const resultObj = analysis.result_json as Record<string, unknown>
+            
+            const analysisResult = {
+              analysisTypeId: analysis.analysis_types.id,
+              provider: analysis.provider,
+              result: {
+                content: typeof resultObj.content === 'string' 
+                  ? resultObj.content
+                  : 'Analyse terminée',
+                annotations: Array.isArray(resultObj.annotations) 
+                  ? resultObj.annotations 
+                  : [],
+                model: analysis.provider === 'openai' ? 'gpt-4o' : 'claude-3-5-sonnet',
+                usage: resultObj.usage || {
+                  prompt_tokens: 0,
+                  completion_tokens: 0,
+                  total_tokens: 0
+                }
+              }
+            }
+            
+            setAnalysisResults([analysisResult])
+            
+            // Ajouter le message d'analyse au chat
+            const analysisMessage = {
+              id: `existing-${analysisId}`,
+              role: 'assistant' as const,
+              content: `📊 **Analyse ${analysis.analysis_types.name} chargée**\n\n${analysisResult.result.content}`,
+              timestamp: new Date(analysis.created_at),
+              provider: analysis.provider,
+              model: analysisResult.result.model,
+              usage: analysisResult.result.usage
+            }
+            
+            setAnalysisMessages([analysisMessage])
+            setCurrentStep('results')
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement de l\'analyse:', error)
+        setUploadError('Erreur lors du chargement de l\'analyse')
+      } finally {
+        setLoadingExistingAnalysis(false)
+      }
+    }
+
+    loadExistingAnalysis()
+  }, [analysisId, user, supabase])
 
   // Vérifier les clés API disponibles
   const availableProviders = apiKeys
@@ -78,10 +198,18 @@ export default function AnalyzePage() {
       const data = await response.json()
 
       if (!response.ok) {
+        console.error('=== ERREUR UPLOAD DÉTAILLÉE ===')
+        console.error('Status:', response.status)
+        console.error('Response data:', data)
+        console.error('Étape qui a échoué:', data.step)
+        console.error('Détails:', data.details)
+        console.error('Durée:', data.duration)
         throw new Error(data.error || 'Erreur lors de l\'upload')
       }
 
       if (!data.success) {
+        console.error('=== UPLOAD ÉCHOUÉ ===')
+        console.error('Response data:', data)
         throw new Error(data.error || 'Upload échoué')
       }
 
@@ -199,15 +327,7 @@ export default function AnalyzePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Top Bar */}
-      <TopBar 
-        title="Analyse" 
-        subtitle="Analysez vos images avec l'IA"
-        badge={{
-          text: "IA Réelle",
-          variant: "secondary",
-          className: "bg-green-50 text-green-700"
-        }}
-      />
+      <TopBar />
       
       {/* Back Button */}
       <BackButton href="/dashboard" label="Retour au dashboard" />

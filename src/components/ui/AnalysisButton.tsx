@@ -28,7 +28,7 @@ export function AnalysisButton({ size = 'default', className = '', children }: A
 
   const handleClick = () => {
     if (user) {
-      router.push('/real-analyze')
+      router.push('/analyse')
     } else {
       router.push('/login')
     }

@@ -3,15 +3,23 @@ import { redirect } from 'next/navigation'
 import { SessionInfo } from '@/components/dashboard/SessionInfo'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { TopBar } from '@/components/ui/TopBar'
+import { BackButton } from '@/components/ui/BackButton'
 import { Button } from '@/components/ui/button'
 import { 
-  ArrowLeftIcon,
-  ShieldIcon,
   ActivityIcon,
   ClockIcon,
-  MapPinIcon
+  MapPinIcon,
+  ArrowLeftIcon,
+  ShieldIcon
 } from 'lucide-react'
 import Link from 'next/link'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: "Ainalyzer - Gestion des sessions",
+  description: "Surveillez et gérez vos sessions de connexion",
+}
 
 export default async function SessionsPage() {
   const supabase = await createClient()
@@ -95,31 +103,17 @@ export default async function SessionsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeftIcon className="h-4 w-4 mr-2" />
-                  Retour au dashboard
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Gestion des sessions</h1>
-                <p className="text-gray-600">Surveillez et gérez vos sessions de connexion</p>
-              </div>
-            </div>
-            <Badge variant="secondary" className="bg-blue-50 text-blue-700">
-              <ShieldIcon className="h-4 w-4 mr-1" />
-              Sécurité
-            </Badge>
-          </div>
-        </div>
-      </header>
+      <TopBar />
+      
+      <BackButton href="/dashboard" label="Retour au dashboard" />
 
       <main className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestion des sessions</h1>
+          <p className="text-gray-600">
+            Surveillez et gérez vos sessions de connexion
+          </p>
+        </div>
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Colonne principale - Informations de session */}
           <div className="lg:col-span-2">

@@ -4,20 +4,10 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { ImageIcon, LogOutIcon, UserIcon } from 'lucide-react'
+import Link from 'next/link'
 
-interface TopBarProps {
-  title?: string
-  subtitle?: string
-  badge?: {
-    text: string
-    variant?: 'default' | 'secondary' | 'destructive' | 'outline'
-    className?: string
-  }
-}
-
-export function TopBar({ title = "Ainalyzer", subtitle, badge }: TopBarProps) {
+export function TopBar() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const router = useRouter()
@@ -51,21 +41,11 @@ export function TopBar({ title = "Ainalyzer", subtitle, badge }: TopBarProps) {
     <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-6">
+            <Link href="/dashboard" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
               <ImageIcon className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-              {badge && (
-                <Badge variant={badge.variant || "secondary"} className={badge.className}>
-                  {badge.text}
-                </Badge>
-              )}
-            </div>
-            {subtitle && (
-              <div>
-                <p className="text-gray-600">{subtitle}</p>
-              </div>
-            )}
+              <h1 className="text-2xl font-bold text-gray-900">Ainalyzer</h1>
+            </Link>
           </div>
           
           {user && (

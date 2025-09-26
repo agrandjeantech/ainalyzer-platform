@@ -1,25 +1,30 @@
-'use client'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { Metadata } from 'next'
 
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+export const metadata: Metadata = {
+  title: "Ainalyzer - Administration",
+  description: "Panel d'administration pour gérer la plateforme Ainalyzer",
+}
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { TopBar } from '@/components/ui/TopBar'
+import { BackButton } from '@/components/ui/BackButton'
 import { 
-  ArrowLeftIcon, 
   UsersIcon, 
   ImageIcon, 
   BrainIcon,
   BarChart3Icon,
   ShieldIcon,
   DatabaseIcon,
-  ActivityIcon,
   TrendingUpIcon,
-  AlertTriangleIcon
 } from 'lucide-react'
-import Link from 'next/link'
 import { AnalysisTypesManager } from '@/components/admin/AnalysisTypesManager'
+import { UserManagement } from '@/components/admin/UserManagement'
+import { getRoleColor, getRoleLabel, getRoleIcon } from '@/lib/permissions'
+import { UserRole } from '@/types'
 
 interface AdminStats {
   totalUsers: number
@@ -46,234 +51,158 @@ interface UserStats {
   total_storage_mb: number
 }
 
-export default function AdminPage() {
-  const [user, setUser] = useState<any>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState<AdminStats | null>(null)
-  const [userStats, setUserStats] = useState<UserStats[]>([])
-  const router = useRouter()
-  const supabase = createClient()
+async function getAdminData() {
+  const supabase = await createClient()
+  const adminClient = createAdminClient()
+  
+  // Vérifier l'authentification
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    redirect('/login')
+  }
 
-  useEffect(() => {
-    const checkAdminAccess = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/login')
-        return
-      }
+  // Vérifier le rôle admin/superadmin avec le client admin
+  const { data: userData, error: userError } = await adminClient
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
 
-      // Vérifier le rôle admin
-      const { data: userData } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .single()
+  if (userError || !userData || (userData.role !== 'admin' && userData.role !== 'superadmin')) {
+    redirect('/dashboard')
+  }
 
-      if (!userData || userData.role !== 'admin') {
-        router.push('/dashboard')
-        return
-      }
+  // Charger les statistiques de base avec le client admin
+  const [
+    { count: usersCount },
+    { count: imagesCount },
+    { count: analysesCount },
+    { data: storageData }
+  ] = await Promise.all([
+    adminClient.from('users').select('*', { count: 'exact', head: true }),
+    adminClient.from('images').select('*', { count: 'exact', head: true }),
+    adminClient.from('analyses').select('*', { count: 'exact', head: true }),
+    adminClient.from('images').select('size_bytes')
+  ])
 
-      setUser(user)
-      setIsAdmin(true)
-      await loadAdminData()
-      setLoading(false)
-    }
+  const totalStorageBytes = storageData?.reduce((sum, img) => sum + (img.size_bytes || 0), 0) || 0
+  const totalStorageGB = totalStorageBytes / (1024 * 1024 * 1024)
 
-    checkAdminAccess()
-  }, [router, supabase])
+  const stats: AdminStats = {
+    totalUsers: usersCount || 0,
+    totalImages: imagesCount || 0,
+    totalAnalyses: analysesCount || 0,
+    totalStorageGB: Math.round(totalStorageGB * 100) / 100,
+    avgImagesPerUser: usersCount ? Math.round((imagesCount || 0) / usersCount * 10) / 10 : 0,
+    avgSizePerUserMB: usersCount ? Math.round(totalStorageBytes / (1024 * 1024) / usersCount) : 0,
+    activeUsers24h: 0, // À implémenter plus tard
+    recentUploads24h: 0 // À implémenter plus tard
+  }
 
-  const loadAdminData = async () => {
-    try {
-      // Charger les statistiques de base
-      const { data: usersCount } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
+  // Charger les données utilisateurs détaillées avec le client admin
+  const { data: usersData } = await adminClient
+    .from('users')
+    .select(`
+      id,
+      email,
+      role,
+      status,
+      created_at,
+      last_login,
+      user_profiles(display_name)
+    `)
+    .order('created_at', { ascending: false })
 
-      const { data: imagesCount } = await supabase
-        .from('images')
-        .select('*', { count: 'exact', head: true })
+  let userStats: UserStats[] = []
 
-      const { data: analysesCount } = await supabase
-        .from('analyses')
-        .select('*', { count: 'exact', head: true })
+  if (usersData) {
+    // Pour chaque utilisateur, compter ses images et analyses avec le client admin
+    const enrichedUsers = await Promise.all(
+      usersData.map(async (user) => {
+        const [
+          { count: imagesCount },
+          { count: analysesCount },
+          { count: apiKeysCount },
+          { data: userImages }
+        ] = await Promise.all([
+          adminClient.from('images').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+          adminClient.from('analyses').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+          adminClient.from('api_keys').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+          adminClient.from('images').select('size_bytes').eq('user_id', user.id)
+        ])
 
-      // Calculer le stockage total
-      const { data: storageData } = await supabase
-        .from('images')
-        .select('size_bytes')
+        const userStorageBytes = userImages?.reduce((sum, img) => sum + (img.size_bytes || 0), 0) || 0
+        const userStorageMB = userStorageBytes / (1024 * 1024)
 
-      const totalStorageBytes = storageData?.reduce((sum, img) => sum + (img.size_bytes || 0), 0) || 0
-      const totalStorageGB = totalStorageBytes / (1024 * 1024 * 1024)
-
-      setStats({
-        totalUsers: usersCount?.length || 0,
-        totalImages: imagesCount?.length || 0,
-        totalAnalyses: analysesCount?.length || 0,
-        totalStorageGB: Math.round(totalStorageGB * 100) / 100,
-        avgImagesPerUser: usersCount?.length ? Math.round((imagesCount?.length || 0) / usersCount.length * 10) / 10 : 0,
-        avgSizePerUserMB: usersCount?.length ? Math.round(totalStorageBytes / (1024 * 1024) / usersCount.length) : 0,
-        activeUsers24h: 0, // À implémenter plus tard
-        recentUploads24h: 0 // À implémenter plus tard
+        return {
+          id: user.id,
+          email: user.email || '',
+          display_name: (user.user_profiles as { display_name?: string } | null)?.display_name || 'Utilisateur',
+          role: user.role || 'user',
+          status: user.status || 'active',
+          created_at: user.created_at || '',
+          last_login: user.last_login || '',
+          total_images: imagesCount || 0,
+          total_analyses: analysesCount || 0,
+          total_api_keys: apiKeysCount || 0,
+          total_storage_mb: Math.round(userStorageMB * 100) / 100
+        }
       })
-
-      // Charger les données utilisateurs détaillées
-      const { data: usersData } = await supabase
-        .from('users')
-        .select(`
-          id,
-          email,
-          role,
-          status,
-          created_at,
-          last_login,
-          user_profiles(display_name)
-        `)
-        .order('created_at', { ascending: false })
-
-      if (usersData) {
-        // Pour chaque utilisateur, compter ses images et analyses
-        const enrichedUsers = await Promise.all(
-          usersData.map(async (user) => {
-            const { count: imagesCount } = await supabase
-              .from('images')
-              .select('*', { count: 'exact', head: true })
-              .eq('user_id', user.id)
-
-            const { count: analysesCount } = await supabase
-              .from('analyses')
-              .select('*', { count: 'exact', head: true })
-              .eq('user_id', user.id)
-
-            const { count: apiKeysCount } = await supabase
-              .from('api_keys')
-              .select('*', { count: 'exact', head: true })
-              .eq('user_id', user.id)
-
-            const { data: userImages } = await supabase
-              .from('images')
-              .select('size_bytes')
-              .eq('user_id', user.id)
-
-            const userStorageBytes = userImages?.reduce((sum, img) => sum + (img.size_bytes || 0), 0) || 0
-            const userStorageMB = userStorageBytes / (1024 * 1024)
-
-            return {
-              id: user.id,
-              email: user.email || '',
-              display_name: (user.user_profiles as any)?.display_name || 'Utilisateur',
-              role: user.role || 'user',
-              status: user.status || 'active',
-              created_at: user.created_at || '',
-              last_login: user.last_login || '',
-              total_images: imagesCount || 0,
-              total_analyses: analysesCount || 0,
-              total_api_keys: apiKeysCount || 0,
-              total_storage_mb: Math.round(userStorageMB * 100) / 100
-            }
-          })
-        )
-
-        setUserStats(enrichedUsers)
-      }
-
-    } catch (error) {
-      console.error('Erreur lors du chargement des données admin:', error)
-    }
-  }
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'Jamais'
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 MB'
-    const mb = bytes / (1024 * 1024)
-    return `${mb.toFixed(1)} MB`
-  }
-
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'bg-red-100 text-red-800'
-      case 'user':
-        return 'bg-blue-100 text-blue-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800'
-      case 'inactive':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'suspended':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <ShieldIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p>Vérification des permissions admin...</p>
-        </div>
-      </div>
     )
+
+    userStats = enrichedUsers
   }
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertTriangleIcon className="h-12 w-12 text-red-400 mx-auto mb-4" />
-          <p>Accès non autorisé</p>
-        </div>
-      </div>
-    )
+  return { stats, userStats, currentUser: userData, currentUserId: user.id }
+}
+
+function formatDate(dateString: string) {
+  if (!dateString) return 'Jamais'
+  return new Date(dateString).toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case 'active':
+      return 'bg-green-100 text-green-800'
+    case 'inactive':
+      return 'bg-yellow-100 text-yellow-800'
+    case 'suspended':
+      return 'bg-red-100 text-red-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
   }
+}
+
+export default async function AdminPage() {
+  const { stats, userStats, currentUser, currentUserId } = await getAdminData()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeftIcon className="h-4 w-4 mr-2" />
-                  Retour au dashboard
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Administration</h1>
-                <p className="text-gray-600">Gestion de la plateforme Ainalyzer</p>
-              </div>
-            </div>
-            <Badge variant="secondary" className="bg-red-50 text-red-700">
-              <ShieldIcon className="h-4 w-4 mr-1" />
-              Admin
-            </Badge>
-          </div>
-        </div>
-      </header>
+      <TopBar />
+      
+      <BackButton href="/dashboard" label="Retour au dashboard" />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 space-y-6">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Administration</h1>
+            <p className="text-gray-600">
+              Gestion de la plateforme Ainalyzer
+            </p>
+          </div>
+          <Badge variant="secondary" className="bg-red-50 text-red-700">
+            <ShieldIcon className="h-4 w-4 mr-1" />
+            {currentUser.role === 'superadmin' ? 'Super Admin' : 'Admin'}
+          </Badge>
+        </div>
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
@@ -282,7 +211,7 @@ export default function AdminPage() {
               <UsersIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
+              <div className="text-2xl font-bold">{stats.totalUsers}</div>
               <p className="text-xs text-muted-foreground">
                 Total des comptes créés
               </p>
@@ -295,7 +224,7 @@ export default function AdminPage() {
               <ImageIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalImages || 0}</div>
+              <div className="text-2xl font-bold">{stats.totalImages}</div>
               <p className="text-xs text-muted-foreground">
                 Images uploadées
               </p>
@@ -308,7 +237,7 @@ export default function AdminPage() {
               <BrainIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalAnalyses || 0}</div>
+              <div className="text-2xl font-bold">{stats.totalAnalyses}</div>
               <p className="text-xs text-muted-foreground">
                 Analyses effectuées
               </p>
@@ -321,7 +250,7 @@ export default function AdminPage() {
               <DatabaseIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalStorageGB || 0} GB</div>
+              <div className="text-2xl font-bold">{stats.totalStorageGB} GB</div>
               <p className="text-xs text-muted-foreground">
                 Espace utilisé
               </p>
@@ -341,11 +270,11 @@ export default function AdminPage() {
             <CardContent className="space-y-4">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Images par utilisateur</span>
-                <span className="font-medium">{stats?.avgImagesPerUser || 0}</span>
+                <span className="font-medium">{stats.avgImagesPerUser}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Stockage par utilisateur</span>
-                <span className="font-medium">{stats?.avgSizePerUserMB || 0} MB</span>
+                <span className="font-medium">{stats.avgSizePerUserMB} MB</span>
               </div>
             </CardContent>
           </Card>
@@ -384,54 +313,11 @@ export default function AdminPage() {
         <AnalysisTypesManager />
 
         {/* Users Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Gestion des utilisateurs</CardTitle>
-            <CardDescription>
-              Liste de tous les utilisateurs de la plateforme
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {userStats.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      <div>
-                        <h4 className="font-medium">{user.display_name}</h4>
-                        <p className="text-sm text-gray-600">{user.email}</p>
-                      </div>
-                      <Badge className={getRoleColor(user.role)}>
-                        {user.role}
-                      </Badge>
-                      <Badge className={getStatusColor(user.status)}>
-                        {user.status}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 grid grid-cols-4 gap-4 text-sm text-gray-600">
-                      <div>
-                        <span className="font-medium">{user.total_images}</span> images
-                      </div>
-                      <div>
-                        <span className="font-medium">{user.total_analyses}</span> analyses
-                      </div>
-                      <div>
-                        <span className="font-medium">{user.total_api_keys}</span> clés API
-                      </div>
-                      <div>
-                        <span className="font-medium">{user.total_storage_mb.toFixed(1)} MB</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right text-sm text-gray-500">
-                    <div>Créé: {formatDate(user.created_at)}</div>
-                    <div>Dernière connexion: {formatDate(user.last_login)}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <UserManagement 
+          users={userStats} 
+          currentUserId={currentUserId} 
+          currentUserRole={currentUser.role} 
+        />
       </main>
     </div>
   )

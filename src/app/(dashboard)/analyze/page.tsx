@@ -5,8 +5,14 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeftIcon, BrainIcon, MessageSquareIcon, ImageIcon } from 'lucide-react'
-import Link from 'next/link'
+import { BrainIcon, MessageSquareIcon, ImageIcon } from 'lucide-react'
+import { TopBar } from '@/components/ui/TopBar'
+import { BackButton } from '@/components/ui/BackButton'
+
+// Métadonnées pour cette page (côté client)
+if (typeof document !== 'undefined') {
+  document.title = "Ainalyzer - Analyse d'images"
+}
 import { AnalysisChat } from '@/components/dashboard/AnalysisChat'
 import { ImageUploader } from '@/components/dashboard/ImageUploader'
 import { AnalysisTypesSelector } from '@/components/dashboard/AnalysisTypesSelector'
@@ -270,32 +276,18 @@ export default function AnalyzePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeftIcon className="h-4 w-4 mr-2" />
-                  Retour au dashboard
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Analyse d'images</h1>
-                <p className="text-gray-600">Analysez l'accessibilité de vos interfaces</p>
-              </div>
-            </div>
-            <Badge variant="secondary" className="bg-blue-50 text-blue-700">
-              <BrainIcon className="h-4 w-4 mr-1" />
-              IA Analysis
-            </Badge>
-          </div>
-        </div>
-      </header>
+      <TopBar />
+      
+      <BackButton href="/dashboard" label="Retour au dashboard" />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 h-[calc(100vh-120px)]">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Analyse d'images</h1>
+          <p className="text-gray-600">
+            Analysez l'accessibilité de vos interfaces avec l'IA
+          </p>
+        </div>
         {!showResults ? (
           /* Interface d'upload et sélection */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
