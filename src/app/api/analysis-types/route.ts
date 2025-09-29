@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const isAdmin = userProfile?.role === 'admin'
+    const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'superadmin'
 
     if (!isAdmin || !includeInactive) {
       query = query.eq('active', true)
@@ -90,14 +90,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Vérifier le rôle admin
+    // Vérifier le rôle admin ou superadmin
     const { data: userProfile } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    if (!userProfile || userProfile.role !== 'admin') {
+    if (!userProfile || (userProfile.role !== 'admin' && userProfile.role !== 'superadmin')) {
       return NextResponse.json(
         { error: 'Accès refusé - Droits administrateur requis' },
         { status: 403 }

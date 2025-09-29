@@ -32,14 +32,14 @@ export async function PUT(
       )
     }
 
-    // Vérifier le rôle admin
+    // Vérifier le rôle admin ou superadmin
     const { data: userProfile } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    if (!userProfile || userProfile.role !== 'admin') {
+    if (!userProfile || (userProfile.role !== 'admin' && userProfile.role !== 'superadmin')) {
       return NextResponse.json(
         { error: 'Accès refusé - Droits administrateur requis' },
         { status: 403 }
@@ -186,14 +186,14 @@ export async function DELETE(
       )
     }
 
-    // Vérifier le rôle admin
+    // Vérifier le rôle admin ou superadmin
     const { data: userProfile } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    if (!userProfile || userProfile.role !== 'admin') {
+    if (!userProfile || (userProfile.role !== 'admin' && userProfile.role !== 'superadmin')) {
       return NextResponse.json(
         { error: 'Accès refusé - Droits administrateur requis' },
         { status: 403 }
@@ -318,7 +318,7 @@ export async function GET(
       .eq('id', user.id)
       .single()
 
-    const isAdmin = userProfile?.role === 'admin'
+    const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'superadmin'
 
     if (!isAdmin && !analysisType.active) {
       return NextResponse.json(
